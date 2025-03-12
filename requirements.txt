@@ -2,5 +2,6 @@ streamlit
 openai
 pandas
 streamlit_option_menu
+openpyxl
 matplotlib
 seaborn
