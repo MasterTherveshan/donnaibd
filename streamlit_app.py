@@ -1,56 +1,78 @@
+# main.py
 import streamlit as st
-from openai import OpenAI
+from streamlit_option_menu import option_menu
 
-# Show title and description.
-st.title("💬 Chatbot")
-st.write(
-    "This is a simple chatbot that uses OpenAI's GPT-3.5 model to generate responses. "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
-    "You can also learn how to build this app step by step by [following our tutorial](https://docs.streamlit.io/develop/tutorials/llms/build-conversational-apps)."
-)
+# Import your separate modules
+import style
+import introduction
+import assistant
+import vault
+import workflows
+from workflows.workflows_main import display_workflows
+import data_utils
+import openai_utils
+import utils
 
-# Ask user for their OpenAI API key via `st.text_input`.
-# Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
-# via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
-openai_api_key = st.text_input("OpenAI API Key", type="password")
-if not openai_api_key:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝️")
-else:
+def main():
+    # Basic Streamlit config
+    st.set_page_config(
+        page_title="Donna",
+        page_icon="🔎",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
 
-    # Create an OpenAI client.
-    client = OpenAI(api_key=openai_api_key)
+    # Inject your custom CSS
+    style.inject_css()
 
-    # Create a session state variable to store the chat messages. This ensures that the
-    # messages persist across reruns.
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+    # Initialize session state variables
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+    if "projects" not in st.session_state:
+        st.session_state.projects = {}
+    if "current_project" not in st.session_state:
+        st.session_state.current_project = None
+    if "selected_category" not in st.session_state:
+        st.session_state.selected_category = "All"
+    if "current_workflow" not in st.session_state:
+        st.session_state.current_workflow = None
+    if "current_vault_project" not in st.session_state:
+        st.session_state.current_vault_project = None
 
-    # Display the existing chat messages via `st.chat_message`.
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    # If using OpenAI:
+    openai_utils.setup_openai_api()  # loads st.secrets, etc.
 
-    # Create a chat input field to allow the user to enter a message. This will display
-    # automatically at the bottom of the page.
-    if prompt := st.chat_input("What is up?"):
-
-        # Store and display the current prompt.
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        # Generate a response using the OpenAI API.
-        stream = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
-            stream=True,
+    # Sidebar
+    with st.sidebar:
+        st.markdown('<div class="logo-text">Donna</div>', unsafe_allow_html=True)
+        selected = option_menu(
+            menu_title=None,
+            options=["Introduction", "Assistant", "Vault", "Workflows"],
+            icons=["house", "chat", "folder", "grid"],
+            menu_icon=None,
+            default_index=0,
+            styles={
+                "container": {"padding": "0", "background-color": "transparent"},
+                "icon": {"color": "rgba(255, 255, 255, 0.7)", "font-size": "16px"},
+                "nav-link": {
+                    "font-size": "14px",
+                    "text-align": "left",
+                    "padding": "0.75rem 1.5rem",
+                    "color": "rgba(255, 255, 255, 0.8)"
+                },
+                "nav-link-selected": {"background-color": "#2a2c32", "color": "white"},
+            }
         )
 
-        # Stream the response to the chat using `st.write_stream`, then store it in 
-        # session state.
-        with st.chat_message("assistant"):
-            response = st.write_stream(stream)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+    # Routing to each "page"
+    if selected == "Introduction":
+        introduction.display_introduction()
+    elif selected == "Assistant":
+        assistant.display_assistant()
+    elif selected == "Vault":
+        vault.display_vault()
+    elif selected == "Workflows":
+        workflows.workflows_main.display_workflows()
+
+if __name__ == "__main__":
+    main()
